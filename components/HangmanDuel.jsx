@@ -8,18 +8,18 @@ const MAX_WRONG = 6;
 const TIMER_SECONDS = 20;
 const BEST_OF = 3; // first to 2 wins
 
-const STAGES = { SETUP:"SETUP", WORD_PICK:"WORD_PICK", HANDOFF:"HANDOFF", GUESSING:"GUESSING", RESULT:"RESULT", MATCH_OVER:"MATCH_OVER" };
+const STAGES = { SETUP: "SETUP", WORD_PICK: "WORD_PICK", HANDOFF: "HANDOFF", GUESSING: "GUESSING", RESULT: "RESULT", MATCH_OVER: "MATCH_OVER" };
 
-const API = "https://hangman-backend-xxxx.onrender.com"; // your Render URL
+const API = "https://hangman-backend-murw.onrender.com"; // your Render URL
 
 async function saveMatch(team1, team2, winner, s1, s2, category) {
   try {
     await fetch(`${API}/scores`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ team1, team2, winner, score1:s1, score2:s2, category })
+      body: JSON.stringify({ team1, team2, winner, score1: s1, score2: s2, category })
     });
-  } catch(e) {
+  } catch (e) {
     console.error("Failed to save match", e);
   }
 }
@@ -190,11 +190,11 @@ export default function HangmanDuelV2() {
         {stage !== STAGES.SETUP && (
           <div className="scoreboard fade-in" key={`sc-${animKey}`}>
             <div className="score-team">
-              <div className="score-name">{team1||"Team 1"}</div>
+              <div className="score-name">{team1 || "Team 1"}</div>
               <div className="score-num t1">{score.t1}</div>
               <div className="pip-row">
-                {Array.from({length:neededToWin}).map((_,i)=>(
-                  <div key={i} className={`pip${i<score.t1?" won-t1":""}`}/>
+                {Array.from({ length: neededToWin }).map((_, i) => (
+                  <div key={i} className={`pip${i < score.t1 ? " won-t1" : ""}`} />
                 ))}
               </div>
             </div>
@@ -203,11 +203,11 @@ export default function HangmanDuelV2() {
               <div className="match-progress">Round {round}</div>
             </div>
             <div className="score-team">
-              <div className="score-name">{team2||"Team 2"}</div>
+              <div className="score-name">{team2 || "Team 2"}</div>
               <div className="score-num t2">{score.t2}</div>
               <div className="pip-row">
-                {Array.from({length:neededToWin}).map((_,i)=>(
-                  <div key={i} className={`pip${i<score.t2?" won-t2":""}`}/>
+                {Array.from({ length: neededToWin }).map((_, i) => (
+                  <div key={i} className={`pip${i < score.t2 ? " won-t2" : ""}`} />
                 ))}
               </div>
             </div>
@@ -215,48 +215,48 @@ export default function HangmanDuelV2() {
         )}
 
         {/* ── SETUP ── */}
-        {stage===STAGES.SETUP&&(
+        {stage === STAGES.SETUP && (
           <div className="card fade-in">
             <label className="lbl">Team 1 Name</label>
             <input className="inp" placeholder="e.g. The Wizards" value={team1}
-              onChange={e=>setTeam1(e.target.value)} maxLength={16}/>
+              onChange={e => setTeam1(e.target.value)} maxLength={16} />
             <label className="lbl">Team 2 Name</label>
             <input className="inp" placeholder="e.g. Dark Knights" value={team2}
-              onChange={e=>setTeam2(e.target.value)} maxLength={16}/>
+              onChange={e => setTeam2(e.target.value)} maxLength={16} />
 
-            <label className="lbl" style={{marginBottom:"8px"}}>Word choices per round</label>
+            <label className="lbl" style={{ marginBottom: "8px" }}>Word choices per round</label>
             <div className="count-row">
-              {[3,4,5].map(n=>(
-                <button key={n} className={`count-btn${wordCount===n?" on":""}`}
-                  onClick={()=>setWordCount(n)}>{n}</button>
+              {[3, 4, 5].map(n => (
+                <button key={n} className={`count-btn${wordCount === n ? " on" : ""}`}
+                  onClick={() => setWordCount(n)}>{n}</button>
               ))}
             </div>
 
-            <label className="lbl" style={{marginBottom:"8px"}}>Word category</label>
+            <label className="lbl" style={{ marginBottom: "8px" }}>Word category</label>
             <div className="cat-grid">
-              {["🎲 Random",...ALL_CATEGORY_NAMES].map(c=>(
-                <button key={c} className={`cat-btn${category===c?" on":""}`}
-                  onClick={()=>setCategory(c)}>{c}</button>
+              {["🎲 Random", ...ALL_CATEGORY_NAMES].map(c => (
+                <button key={c} className={`cat-btn${category === c ? " on" : ""}`}
+                  onClick={() => setCategory(c)}>{c}</button>
               ))}
             </div>
 
             <button className="btn btn-r" onClick={startGame}
-              disabled={!team1.trim()||!team2.trim()}>Start Game</button>
+              disabled={!team1.trim() || !team2.trim()}>Start Game</button>
           </div>
         )}
 
         {/* ── WORD PICK ── */}
-        {stage===STAGES.WORD_PICK&&(
+        {stage === STAGES.WORD_PICK && (
           <div className="card fade-in" key={`pick-${animKey}`}>
             <span className="badge">Round {round} · Picking Phase</span>
             <p className="sect-label">📖 secret word selector</p>
             <p className="hero-name">{pickerTeam}</p>
-            <p className="sect-label" style={{marginBottom:"12px"}}>
-              Pick a word for <span style={{color:"var(--red)"}}>{guesserTeam}</span> to guess
+            <p className="sect-label" style={{ marginBottom: "12px" }}>
+              Pick a word for <span style={{ color: "var(--red)" }}>{guesserTeam}</span> to guess
             </p>
             <div className="choices">
-              {choices.map((w,i)=>(
-                <button key={i} className="choice" onClick={()=>pickWord(w)}>{w}</button>
+              {choices.map((w, i) => (
+                <button key={i} className="choice" onClick={() => pickWord(w)}>{w}</button>
               ))}
             </div>
             <div className="warning">⚠ Make sure {guesserTeam} isn't watching!</div>
@@ -264,17 +264,17 @@ export default function HangmanDuelV2() {
         )}
 
         {/* ── HANDOFF SCREEN ── */}
-        {stage===STAGES.HANDOFF&&(
+        {stage === STAGES.HANDOFF && (
           <div className="card fade-in" key={`handoff-${animKey}`}>
             <div className="handoff-box">
               <div className="handoff-icon">🔄</div>
               <p className="handoff-title">Pass the device!</p>
               <p className="handoff-sub">
-                Hand the screen to<br/>
-                <span style={{color:"var(--yellow)",fontWeight:700,fontSize:"1rem",letterSpacing:"2px"}}>
+                Hand the screen to<br />
+                <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: "1rem", letterSpacing: "2px" }}>
                   {guesserTeam}
-                </span><br/>
-                <span style={{fontSize:"0.75rem"}}>
+                </span><br />
+                <span style={{ fontSize: "0.75rem" }}>
                   {pickerTeam} — keep the word secret! 🤫
                 </span>
               </p>
@@ -286,16 +286,16 @@ export default function HangmanDuelV2() {
         )}
 
         {/* ── GUESSING ── */}
-        {stage===STAGES.GUESSING&&(
-          <div className={`card${shake?" shake":""}`} key={`guess-${animKey}`}>
+        {stage === STAGES.GUESSING && (
+          <div className={`card${shake ? " shake" : ""}`} key={`guess-${animKey}`}>
             <div className="guesser-banner">
               <div>
                 <div className="gb-left">guessing now</div>
                 <div className="gb-name">{guesserTeam}</div>
               </div>
-              <div style={{textAlign:"right"}}>
+              <div style={{ textAlign: "right" }}>
                 <div className="wrong-label">{wrong}/{MAX_WRONG} wrong</div>
-                <div style={{fontSize:"0.65rem",letterSpacing:"2px",color:"var(--muted)"}}>
+                <div style={{ fontSize: "0.65rem", letterSpacing: "2px", color: "var(--muted)" }}>
                   {category}
                 </div>
               </div>
@@ -305,43 +305,43 @@ export default function HangmanDuelV2() {
             <div className="timer-wrap">
               <div className="timer-row">
                 <span className="timer-label">⏱ time per letter</span>
-                <span className="timer-num" style={{color:timerColor}}>{timeLeft}s</span>
+                <span className="timer-num" style={{ color: timerColor }}>{timeLeft}s</span>
               </div>
               <div className="timer-bar-bg">
                 <div className="timer-bar" style={{
-                  width:`${timerPct}%`,
-                  background:timerColor,
-                  boxShadow:`0 0 8px ${timerColor}`
-                }}/>
+                  width: `${timerPct}%`,
+                  background: timerColor,
+                  boxShadow: `0 0 8px ${timerColor}`
+                }} />
               </div>
             </div>
 
-            <div className="hm-area"><HangmanSVG wrongCount={wrong}/></div>
+            <div className="hm-area"><HangmanSVG wrongCount={wrong} /></div>
 
             <div className="wrong-dots">
-              {Array.from({length:MAX_WRONG}).map((_,i)=>(
-                <div key={i} className={`dot${i<wrong?" on":""}`}/>
+              {Array.from({ length: MAX_WRONG }).map((_, i) => (
+                <div key={i} className={`dot${i < wrong ? " on" : ""}`} />
               ))}
             </div>
 
             <div className="word-disp">
-              {wordDisplay.map((l,i)=>(
+              {wordDisplay.map((l, i) => (
                 <div key={i} className="lb">
-                  <span className={`lc${l.revealed?"":" h"}`}>{l.revealed?l.letter:"·"}</span>
-                  <div className={`ll${l.revealed?" rev":""}`}/>
+                  <span className={`lc${l.revealed ? "" : " h"}`}>{l.revealed ? l.letter : "·"}</span>
+                  <div className={`ll${l.revealed ? " rev" : ""}`} />
                 </div>
               ))}
             </div>
 
             <div className="kb">
-              {alphabet.map(letter=>{
-                const isGuessed=guessed.includes(letter);
-                const isCorrect=isGuessed&&chosenWord.toUpperCase().includes(letter);
-                const isWrong=isGuessed&&!chosenWord.toUpperCase().includes(letter);
-                return(
+              {alphabet.map(letter => {
+                const isGuessed = guessed.includes(letter);
+                const isCorrect = isGuessed && chosenWord.toUpperCase().includes(letter);
+                const isWrong = isGuessed && !chosenWord.toUpperCase().includes(letter);
+                return (
                   <button key={letter}
-                    className={`key${isCorrect?" cor used":""}${isWrong?" wrg used":""}`}
-                    onClick={()=>guessLetter(letter)} disabled={isGuessed}>
+                    className={`key${isCorrect ? " cor used" : ""}${isWrong ? " wrg used" : ""}`}
+                    onClick={() => guessLetter(letter)} disabled={isGuessed}>
                     {letter}
                   </button>
                 );
@@ -351,19 +351,19 @@ export default function HangmanDuelV2() {
         )}
 
         {/* ── ROUND RESULT ── */}
-        {stage===STAGES.RESULT&&(
+        {stage === STAGES.RESULT && (
           <div className="card fade-in" key={`res-${animKey}`}>
-            <div className="res-icon">{winner==="guesser"?"🏆":"💀"}</div>
-            <p className="res-title" style={{color:winner==="guesser"?"var(--cyan)":"var(--red)"}}>
-              {winner==="guesser"?`${guesserTeam} wins!`:`${pickerTeam} wins!`}
+            <div className="res-icon">{winner === "guesser" ? "🏆" : "💀"}</div>
+            <p className="res-title" style={{ color: winner === "guesser" ? "var(--cyan)" : "var(--red)" }}>
+              {winner === "guesser" ? `${guesserTeam} wins!` : `${pickerTeam} wins!`}
             </p>
-            <p style={{textAlign:"center",color:"var(--muted)",fontSize:"0.8rem",marginBottom:"12px",letterSpacing:"1px"}}>
-              {winner==="guesser"?"Word cracked before the hangman fell 🎉":"The hangman has fallen ☠️"}
+            <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "0.8rem", marginBottom: "12px", letterSpacing: "1px" }}>
+              {winner === "guesser" ? "Word cracked before the hangman fell 🎉" : "The hangman has fallen ☠️"}
             </p>
             <p className="res-word-lbl">The word was</p>
             <p className="res-word">{chosenWord}</p>
-            <div className="divider"/>
-            <div className="scoreboard" style={{marginBottom:0}}>
+            <div className="divider" />
+            <div className="scoreboard" style={{ marginBottom: 0 }}>
               <div className="score-team">
                 <div className="score-name">{team1}</div>
                 <div className="score-num t1">{score.t1}</div>
@@ -374,32 +374,32 @@ export default function HangmanDuelV2() {
                 <div className="score-num t2">{score.t2}</div>
               </div>
             </div>
-            <div className="divider"/>
+            <div className="divider" />
             <button className="btn btn-r" onClick={nextRound}>Next Round →</button>
             <button className="btn btn-c" onClick={resetGame}>Reset Game</button>
           </div>
         )}
 
         {/* ── MATCH OVER ── */}
-        {stage===STAGES.MATCH_OVER&&(
+        {stage === STAGES.MATCH_OVER && (
           <div className="card fade-in match-bg" key={`match-${animKey}`}>
             <div className="trophy">🏆</div>
             <p className="match-title">{matchWinner}</p>
-            <p className="match-sub" style={{color:"var(--yellow)"}}>WINS THE MATCH</p>
+            <p className="match-sub" style={{ color: "var(--yellow)" }}>WINS THE MATCH</p>
             <div className="final-scores">
               <div className="fs-team">
                 <div className="fs-name">{team1}</div>
-                <div className="fs-num" style={{color:"var(--cyan)"}}>{score.t1}</div>
+                <div className="fs-num" style={{ color: "var(--cyan)" }}>{score.t1}</div>
               </div>
-              <div className="fs-team" style={{alignSelf:"center"}}>
-                <div style={{fontFamily:"'Creepster',cursive",fontSize:"1.5rem",color:"var(--muted)"}}>vs</div>
+              <div className="fs-team" style={{ alignSelf: "center" }}>
+                <div style={{ fontFamily: "'Creepster',cursive", fontSize: "1.5rem", color: "var(--muted)" }}>vs</div>
               </div>
               <div className="fs-team">
                 <div className="fs-name">{team2}</div>
-                <div className="fs-num" style={{color:"var(--red)"}}>{score.t2}</div>
+                <div className="fs-num" style={{ color: "var(--red)" }}>{score.t2}</div>
               </div>
             </div>
-            <div className="divider"/>
+            <div className="divider" />
             <button className="btn btn-r" onClick={resetGame}>Play Again</button>
           </div>
         )}
