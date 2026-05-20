@@ -24,94 +24,96 @@ async function saveMatch(team1, team2, winner, s1, s2, category) {
   }
 }
 
-// Professional Bot guessing heuristic using regex constraint-matching on same-category dictionary pool
+// Balanced Bot guessing heuristic with a ~50-50% win rate
 function getSmartBotGuess(chosenWord, guessed, category) {
   const wordLength = chosenWord.length;
   const upperChosen = chosenWord.toUpperCase();
   const upperGuessed = guessed.map(g => g.toUpperCase());
 
-  // Get matching letters and incorrect letters
-  const correctLetters = [];
-  const incorrectLetters = [];
-  upperGuessed.forEach(l => {
-    if (upperChosen.includes(l)) {
-      correctLetters.push(l);
-    } else {
-      incorrectLetters.push(l);
-    }
-  });
+  // Split remaining unguessed letters into correct and incorrect pools
+  const correctPool = [];
+  const incorrectPool = [];
 
-  // Get all candidate words from selected category
-  let pool = [];
-  if (category === "🎲 Random") {
-    pool = Object.values(CATEGORIES).flat();
-  } else {
-    pool = CATEGORIES[category] || CATEGORIES["🧠 General"];
-  }
-
-  // Deduplicate and convert to uppercase
-  pool = [...new Set(pool.map(w => w.toUpperCase()))];
-
-  // Filter words by length and matched letters
-  const candidates = pool.filter(word => {
-    if (word.length !== wordLength) return false;
-    
-    // Check match for each character
-    for (let i = 0; i < wordLength; i++) {
-      const char = word[i];
-      const actualChar = upperChosen[i];
-      
-      // If letter is revealed at this index
-      if (upperGuessed.includes(actualChar)) {
-        if (char !== actualChar) return false;
-      } else {
-        // If it's a hidden index, it cannot be any of the correctly guessed letters
-        if (correctLetters.includes(char)) return false;
-      }
-
-      // It also cannot be any of the incorrect letters
-      if (incorrectLetters.includes(char)) return false;
-    }
-    return true;
-  });
-
-  // Count letter frequencies in remaining candidates
-  const frequencies = {};
-  candidates.forEach(word => {
-    for (let char of word) {
-      if (!upperGuessed.includes(char) && char >= 'A' && char <= 'Z') {
-        frequencies[char] = (frequencies[char] || 0) + 1;
-      }
-    }
-  });
-
-  // Find the highest frequency letter
-  let bestLetter = null;
-  let maxFreq = -1;
-  for (let char in frequencies) {
-    if (frequencies[char] > maxFreq) {
-      maxFreq = frequencies[char];
-      bestLetter = char;
-    }
-  }
-
-  if (bestLetter) return bestLetter;
-
-  // Fallback to standard English letter frequency
-  const fallbackOrder = ['E', 'A', 'O', 'I', 'T', 'N', 'S', 'R', 'H', 'L', 'D', 'C', 'U', 'M', 'P', 'G', 'W', 'F', 'Y', 'B', 'V', 'K', 'X', 'J', 'Q', 'Z'];
-  for (let char of fallbackOrder) {
-    if (!upperGuessed.includes(char)) {
-      return char;
-    }
-  }
-
-  // Absolute fallback
   for (let i = 65; i <= 90; i++) {
     const char = String.fromCharCode(i);
-    if (!upperGuessed.includes(char)) return char;
+    if (!upperGuessed.includes(char)) {
+      if (upperChosen.includes(char)) {
+        correctPool.push(char);
+      } else {
+        incorrectPool.push(char);
+      }
+    }
   }
-  return null;
+
+  // If no correct letters left, must guess incorrect (or vice versa)
+  if (correctPool.length === 0) return incorrectPool[0] || null;
+  if (incorrectPool.length === 0) return correctPool[0] || null;
+
+  // Set standard English common letter order for heuristics
+  const commonLetters = ['E', 'A', 'O', 'I', 'T', 'N', 'S', 'R', 'H', 'L', 'D', 'C', 'U', 'M', 'P', 'G', 'W', 'F', 'Y', 'B', 'V', 'K', 'X', 'J', 'Q', 'Z'];
+
+  // Balance win rate at ~50% by having a 38% chance to make a human-like mistake (guess an incorrect letter)
+  const isMistake = Math.random() < 0.38;
+
+  if (isMistake) {
+    // Plausible mistake: pick a high-frequency incorrect letter (like a common vowel or consonant that is not in the word)
+    const availableCommonWrong = incorrectPool.filter(l => commonLetters.slice(0, 14).includes(l));
+    if (availableCommonWrong.length > 0) {
+      // Pick a random one from the common wrong letters to look natural
+      return availableCommonWrong[Math.floor(Math.random() * availableCommonWrong.length)];
+    }
+    // Fallback to any wrong letter
+    return incorrectPool[Math.floor(Math.random() * incorrectPool.length)];
+  } else {
+    // Smart correct guess: pick a correct letter that is statistically most frequent/plausible in the category pool
+    let pool = [];
+    if (category === "🎲 Random") {
+      pool = Object.values(CATEGORIES).flat();
+    } else {
+      pool = CATEGORIES[category] || CATEGORIES["🧠 General"];
+    }
+
+    pool = [...new Set(pool.map(w => w.toUpperCase()))];
+
+    // Filter candidate words of the same length matching current revealed pattern
+    const candidates = pool.filter(word => {
+      if (word.length !== wordLength) return false;
+      for (let i = 0; i < wordLength; i++) {
+        const actualChar = upperChosen[i];
+        if (upperGuessed.includes(actualChar)) {
+          if (word[i] !== actualChar) return false;
+        } else {
+          if (word[i] === actualChar) {
+            // If the secret letter isn't guessed yet, the candidate shouldn't have a matching letter at this index
+            // (since the player/AI hasn't discovered it yet)
+          }
+        }
+      }
+      return true;
+    });
+
+    // Count letter frequencies in remaining candidates
+    const frequencies = {};
+    candidates.forEach(word => {
+      for (let char of word) {
+        if (correctPool.includes(char)) {
+          frequencies[char] = (frequencies[char] || 0) + 1;
+        }
+      }
+    });
+
+    // Sort correct letters by frequency, fallback to general English order
+    const sortedCorrect = correctPool.sort((a, b) => {
+      const freqA = frequencies[a] || 0;
+      const freqB = frequencies[b] || 0;
+      if (freqA !== freqB) return freqB - freqA;
+      return commonLetters.indexOf(a) - commonLetters.indexOf(b);
+    });
+
+    return sortedCorrect[0];
+  }
 }
+
 
 export default function HangmanDuelV2() {
   const [gameMode, setGameMode] = useState("solo"); // "solo" or "duel"
