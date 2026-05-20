@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ALL_CATEGORY_NAMES, getRandomWords } from "../../backend/data/categories";
+import { ALL_CATEGORY_NAMES, getRandomWords } from "../utils/categories";
 import { useSounds } from "../utils/sounds";
 import { HangmanSVG } from "./HangmanSVG";
 import "../styles/hangman.css";
