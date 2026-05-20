@@ -184,3 +184,29 @@
 .fs-team{text-align:center;}
 .fs-name{font-size:0.65rem;letter-spacing:3px;color:var(--muted);margin-bottom:2px;}
 .fs-num{font-family:'Creepster',cursive;font-size:3rem;}
+
+/* AI THINKING OVERLAY */
+.ai-thinking-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #00f5d40a;
+  border: 1px solid #00f5d422;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 12px;
+  box-shadow: 0 0 10px #00f5d405;
+}
+.ai-pulse {
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  text-shadow: 0 0 10px var(--gc);
+  animation: aiPulse 1.5s infinite ease-in-out;
+}
+@keyframes aiPulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+

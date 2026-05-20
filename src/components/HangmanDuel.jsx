@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ALL_CATEGORY_NAMES, getRandomWords } from "../utils/categories";
+import { ALL_CATEGORY_NAMES, getRandomWords, CATEGORIES } from "../utils/categories";
 import { useSounds } from "../utils/sounds";
 import { HangmanSVG } from "./HangmanSVG";
 import "../styles/hangman.css";
@@ -24,10 +24,100 @@ async function saveMatch(team1, team2, winner, s1, s2, category) {
   }
 }
 
+// Professional Bot guessing heuristic using regex constraint-matching on same-category dictionary pool
+function getSmartBotGuess(chosenWord, guessed, category) {
+  const wordLength = chosenWord.length;
+  const upperChosen = chosenWord.toUpperCase();
+  const upperGuessed = guessed.map(g => g.toUpperCase());
+
+  // Get matching letters and incorrect letters
+  const correctLetters = [];
+  const incorrectLetters = [];
+  upperGuessed.forEach(l => {
+    if (upperChosen.includes(l)) {
+      correctLetters.push(l);
+    } else {
+      incorrectLetters.push(l);
+    }
+  });
+
+  // Get all candidate words from selected category
+  let pool = [];
+  if (category === "🎲 Random") {
+    pool = Object.values(CATEGORIES).flat();
+  } else {
+    pool = CATEGORIES[category] || CATEGORIES["🧠 General"];
+  }
+
+  // Deduplicate and convert to uppercase
+  pool = [...new Set(pool.map(w => w.toUpperCase()))];
+
+  // Filter words by length and matched letters
+  const candidates = pool.filter(word => {
+    if (word.length !== wordLength) return false;
+    
+    // Check match for each character
+    for (let i = 0; i < wordLength; i++) {
+      const char = word[i];
+      const actualChar = upperChosen[i];
+      
+      // If letter is revealed at this index
+      if (upperGuessed.includes(actualChar)) {
+        if (char !== actualChar) return false;
+      } else {
+        // If it's a hidden index, it cannot be any of the correctly guessed letters
+        if (correctLetters.includes(char)) return false;
+      }
+
+      // It also cannot be any of the incorrect letters
+      if (incorrectLetters.includes(char)) return false;
+    }
+    return true;
+  });
+
+  // Count letter frequencies in remaining candidates
+  const frequencies = {};
+  candidates.forEach(word => {
+    for (let char of word) {
+      if (!upperGuessed.includes(char) && char >= 'A' && char <= 'Z') {
+        frequencies[char] = (frequencies[char] || 0) + 1;
+      }
+    }
+  });
+
+  // Find the highest frequency letter
+  let bestLetter = null;
+  let maxFreq = -1;
+  for (let char in frequencies) {
+    if (frequencies[char] > maxFreq) {
+      maxFreq = frequencies[char];
+      bestLetter = char;
+    }
+  }
+
+  if (bestLetter) return bestLetter;
+
+  // Fallback to standard English letter frequency
+  const fallbackOrder = ['E', 'A', 'O', 'I', 'T', 'N', 'S', 'R', 'H', 'L', 'D', 'C', 'U', 'M', 'P', 'G', 'W', 'F', 'Y', 'B', 'V', 'K', 'X', 'J', 'Q', 'Z'];
+  for (let char of fallbackOrder) {
+    if (!upperGuessed.includes(char)) {
+      return char;
+    }
+  }
+
+  // Absolute fallback
+  for (let i = 65; i <= 90; i++) {
+    const char = String.fromCharCode(i);
+    if (!upperGuessed.includes(char)) return char;
+  }
+  return null;
+}
+
 export default function HangmanDuelV2() {
+  const [gameMode, setGameMode] = useState("solo"); // "solo" or "duel"
   const [stage, setStage] = useState(STAGES.SETUP);
-  const [team1, setTeam1] = useState("");
-  const [team2, setTeam2] = useState("");
+  const [team1, setTeam1] = useState("Player");
+  const [team2, setTeam2] = useState("Gallows Bot 🤖");
   const [score, setScore] = useState({ t1: 0, t2: 0 });
   const [round, setRound] = useState(1);
   const [wordCount, setWordCount] = useState(4);
@@ -48,6 +138,8 @@ export default function HangmanDuelV2() {
   const guesserTeam = round % 2 === 1 ? team2 : team1;
   const neededToWin = Math.ceil(BEST_OF / 2);
 
+  const isBotTurn = gameMode === "solo" && round % 2 === 0;
+
   // Timer
   useEffect(() => {
     if (!timerActive || stage !== STAGES.GUESSING) return;
@@ -60,11 +152,36 @@ export default function HangmanDuelV2() {
     return () => clearTimeout(id);
   }, [timerActive, timeLeft, stage, sounds]);
 
+  // Bot guessing effect
+  useEffect(() => {
+    if (!timerActive || stage !== STAGES.GUESSING || !isBotTurn) return;
+
+    const botGuessTimer = setTimeout(() => {
+      const letter = getSmartBotGuess(chosenWord, guessed, category);
+      if (letter) {
+        guessLetter(letter);
+      }
+    }, 1500);
+
+    return () => clearTimeout(botGuessTimer);
+  }, [timerActive, stage, isBotTurn, chosenWord, guessed, category]);
+
   function startGame() {
     if (!team1.trim() || !team2.trim()) return;
     sounds.click();
-    setStage(STAGES.WORD_PICK);
-    setChoices(getRandomWords(category, wordCount));
+    if (gameMode === "solo") {
+      // Bot picks (round 1), Player guesses
+      const secret = getRandomWords(category, 1)[0];
+      setChosenWord(secret);
+      setGuessed([]);
+      setWrong(0);
+      setTimeLeft(TIMER_SECONDS);
+      setStage(STAGES.GUESSING);
+      setTimerActive(true);
+    } else {
+      setStage(STAGES.WORD_PICK);
+      setChoices(getRandomWords(category, wordCount));
+    }
     setAnimKey(k => k + 1);
   }
 
@@ -74,7 +191,13 @@ export default function HangmanDuelV2() {
     setGuessed([]);
     setWrong(0);
     setTimeLeft(TIMER_SECONDS);
-    setStage(STAGES.HANDOFF);
+    if (gameMode === "solo") {
+      // Skip handoff and let Bot start guessing!
+      setStage(STAGES.GUESSING);
+      setTimerActive(true);
+    } else {
+      setStage(STAGES.HANDOFF);
+    }
     setAnimKey(k => k + 1);
   }
 
@@ -146,22 +269,46 @@ export default function HangmanDuelV2() {
 
   function nextRound() {
     sounds.click();
-    setRound(r => r + 1);
-    setChoices(getRandomWords(category, wordCount));
-    setWinner(null);
-    setChosenWord("");
-    setGuessed([]);
-    setWrong(0);
-    setTimeLeft(TIMER_SECONDS);
-    setTimerActive(false);
-    setStage(STAGES.WORD_PICK);
+    setRound(r => {
+      const nextR = r + 1;
+      setWinner(null);
+      setChosenWord("");
+      setGuessed([]);
+      setWrong(0);
+      setTimeLeft(TIMER_SECONDS);
+      setTimerActive(false);
+
+      if (gameMode === "solo") {
+        if (nextR % 2 === 1) {
+          // Bot picks, Player guesses
+          const secret = getRandomWords(category, 1)[0];
+          setChosenWord(secret);
+          setStage(STAGES.GUESSING);
+          setTimerActive(true);
+        } else {
+          // Player picks, Bot guesses
+          setChoices(getRandomWords(category, wordCount));
+          setStage(STAGES.WORD_PICK);
+        }
+      } else {
+        setChoices(getRandomWords(category, wordCount));
+        setStage(STAGES.WORD_PICK);
+      }
+      return nextR;
+    });
     setAnimKey(k => k + 1);
   }
 
   function resetGame() {
     sounds.click();
     setStage(STAGES.SETUP);
-    setTeam1(""); setTeam2("");
+    if (gameMode === "solo") {
+      setTeam1("Player");
+      setTeam2("Gallows Bot 🤖");
+    } else {
+      setTeam1("");
+      setTeam2("");
+    }
     setScore({ t1: 0, t2: 0 });
     setRound(1);
     setWinner(null);
@@ -217,12 +364,52 @@ export default function HangmanDuelV2() {
         {/* ── SETUP ── */}
         {stage === STAGES.SETUP && (
           <div className="card fade-in">
+            <label className="lbl" style={{ marginBottom: "8px" }}>Game Mode</label>
+            <div className="count-row" style={{ marginBottom: "16px" }}>
+              <button 
+                type="button"
+                className={`count-btn${gameMode === "solo" ? " on" : ""}`}
+                onClick={() => {
+                  sounds.click();
+                  setGameMode("solo");
+                  setTeam1("Player");
+                  setTeam2("Gallows Bot 🤖");
+                }}
+                style={{ flex: 1 }}
+              >
+                👤 Solo vs AI
+              </button>
+              <button 
+                type="button"
+                className={`count-btn${gameMode === "duel" ? " on" : ""}`}
+                onClick={() => {
+                  sounds.click();
+                  setGameMode("duel");
+                  setTeam1("");
+                  setTeam2("");
+                }}
+                style={{ flex: 1 }}
+              >
+                ⚔️ local Duel
+              </button>
+            </div>
+
             <label className="lbl">Team 1 Name</label>
             <input className="inp" placeholder="e.g. The Wizards" value={team1}
               onChange={e => setTeam1(e.target.value)} maxLength={16} />
-            <label className="lbl">Team 2 Name</label>
-            <input className="inp" placeholder="e.g. Dark Knights" value={team2}
-              onChange={e => setTeam2(e.target.value)} maxLength={16} />
+            
+            {gameMode === "duel" ? (
+              <>
+                <label className="lbl">Team 2 Name</label>
+                <input className="inp" placeholder="e.g. Dark Knights" value={team2}
+                  onChange={e => setTeam2(e.target.value)} maxLength={16} />
+              </>
+            ) : (
+              <>
+                <label className="lbl">Opponent</label>
+                <input className="inp" value={team2} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
+              </>
+            )}
 
             <label className="lbl" style={{ marginBottom: "8px" }}>Word choices per round</label>
             <div className="count-row">
@@ -259,7 +446,9 @@ export default function HangmanDuelV2() {
                 <button key={i} className="choice" onClick={() => pickWord(w)}>{w}</button>
               ))}
             </div>
-            <div className="warning">⚠ Make sure {guesserTeam} isn't watching!</div>
+            <div className="warning">
+              {gameMode === "solo" ? "⚡ The Bot will try to decipher this word!" : `⚠ Make sure ${guesserTeam} isn't watching!`}
+            </div>
           </div>
         )}
 
@@ -290,7 +479,7 @@ export default function HangmanDuelV2() {
           <div className={`card${shake ? " shake" : ""}`} key={`guess-${animKey}`}>
             <div className="guesser-banner">
               <div>
-                <div className="gb-left">guessing now</div>
+                <div className="gb-left">{isBotTurn ? "🤖 AI is calculating..." : "guessing now"}</div>
                 <div className="gb-name">{guesserTeam}</div>
               </div>
               <div style={{ textAlign: "right" }}>
@@ -315,6 +504,12 @@ export default function HangmanDuelV2() {
                 }} />
               </div>
             </div>
+
+            {isBotTurn && (
+              <div className="ai-thinking-overlay">
+                <span className="ai-pulse">⚡ AI is scanning letter patterns...</span>
+              </div>
+            )}
 
             <div className="hm-area"><HangmanSVG wrongCount={wrong} /></div>
 
@@ -341,7 +536,7 @@ export default function HangmanDuelV2() {
                 return (
                   <button key={letter}
                     className={`key${isCorrect ? " cor used" : ""}${isWrong ? " wrg used" : ""}`}
-                    onClick={() => guessLetter(letter)} disabled={isGuessed}>
+                    onClick={() => guessLetter(letter)} disabled={isGuessed || isBotTurn}>
                     {letter}
                   </button>
                 );
